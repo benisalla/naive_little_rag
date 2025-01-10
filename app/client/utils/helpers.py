@@ -7,13 +7,6 @@ from llama_index.core.schema import Document as LLamaDocument
 from utils.constant import FINAL_PROMPT, MAX_LENGTH, MULTI_QUERY_PROMPT, REPETITION_PENALTY, TEMPERATURE, TOP_K, TOP_P
 from utils.style import text2html, chat_block
 
-
-# class Custom_PDF(FPDF):
-#     def __init__(self):
-#         super().__init__()
-#         self.add_font('Arial Unicode MS', '', "./font/arial-unicode-ms.ttf", uni=True)
-#         self.set_font('Arial Unicode MS', '', 12)
-
 class Custom_PDF(FPDF):
     def __init__(self):
         super().__init__()
