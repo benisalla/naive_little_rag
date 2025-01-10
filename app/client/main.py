@@ -2,13 +2,14 @@ import os
 import chromadb
 import streamlit as st
 import tiktoken
-from llm import LLMClient
 from dotenv import load_dotenv
 from llama_index.core.node_parser.text.token import TokenTextSplitter
-from style import header_content
-from util import init_session_state, RagEmbedder, \
-    RagRanker, export_chat_to_pdf, display_chat_history, \
-    query_component, upload_handler
+from utils.style import header_content
+from utils.constant import BACKUP_SEPARATORS, CHUNK_OVERLAP, CHUNK_SIZE, SEPARATOR
+from utils.helpers import display_chat_history, export_chat_to_pdf, init_session_state, query_component, upload_handler
+from rag.reranker import ReRanker
+from rag.embedder import Embedder
+from rag.llm import LLMClient
 
 # download environment variables
 load_dotenv()
@@ -33,10 +34,10 @@ if not st.session_state.llm_client:
     st.session_state.llm_client = LLMClient()
 
 if not st.session_state.cross_encoder:
-    st.session_state.cross_encoder = RagRanker(cross_encoder_name)
+    st.session_state.cross_encoder = ReRanker(cross_encoder_name)
 
 if not st.session_state.emb_fun:
-    st.session_state.emb_fun = RagEmbedder(emb_model_name)
+    st.session_state.emb_fun = Embedder(emb_model_name)
 
 if not st.session_state.chroma_client:
     st.session_state.chroma_client = chromadb.HttpClient(host=host, port=port)
@@ -53,12 +54,10 @@ def uploaded_files_state(st):
 
 if not st.session_state.token_splitter:
     st.session_state.token_splitter = TokenTextSplitter(
-        separator=". ",
-        chunk_size=200,
-        chunk_overlap=20,
-        backup_separators=[
-            "\n\n\n", "\n\n", "\r\n", "\r", "\t", "! ", "? ", ": ", "; ", ", ",
-        ],
+        separator=SEPARATOR, 
+        chunk_size=CHUNK_SIZE,
+        chunk_overlap=CHUNK_OVERLAP, 
+        backup_separators=BACKUP_SEPARATORS,
         tokenizer=tiktoken.encoding_for_model("gpt-3.5-turbo").encode
     )
 
@@ -68,22 +67,22 @@ if not st.session_state.user_name:
 ########################| Main Content |#############################
 st.markdown(header_content(), unsafe_allow_html=True)
 
-########################| Side Bare |#############################
-st.sidebar.title('JURID.IA')
+########################| Side Bar |#############################
+st.sidebar.title('BenIsAlla EduBot')
 st.sidebar.markdown("***")
-st.sidebar.markdown('Votre premier assistant juridique au Maroc 🇲🇦')
+st.sidebar.markdown('My AI assistant')
 st.sidebar.markdown("***")
 with st.container(border=True):
-    is_upload = st.sidebar.toggle('Upload Files ?')
+    is_upload = st.sidebar.toggle('Upload Files?')
 st.sidebar.markdown("***")
 file_types = ["pdf", "txt", "docx"]
-uploaded_files = st.sidebar.file_uploader("Déposez vos fichiers ici",
+uploaded_files = st.sidebar.file_uploader("Drop your files here",
                                           type=file_types,
                                           on_change=(lambda: uploaded_files_state(st)),
                                           accept_multiple_files=True)
 
 st.sidebar.markdown("***")
-st.sidebar.write('Développé avec ❤️ par [Ben Alla Ismail](https://www.linkedin.com/in/omar-el-adlouni/)')
+st.sidebar.write('Built By [Ben Alla Ismail](https://www.linkedin.com/in/ismail-ben-alla-bai/)') 
 
 
 ########################| Add Uploaded files |#############################

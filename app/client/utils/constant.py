@@ -14,3 +14,16 @@ Your response must be based solely on this information to ensure accuracy and as
 [INST]Query: "{query}" 
 Relevant information: "{information}"[/INST]
 """
+
+# chunker configuration
+SEPARATOR = ". "
+CHUNK_SIZE=200
+CHUNK_OVERLAP=20
+BACKUP_SEPARATORS = ["\n\n\n", "\n\n", "\r\n", "\r", "\t", "! ", "? ", ": ", "; ", ", ",]
+
+# llm configuration
+TEMPERATURE=0.9
+MAX_LENGTH=2048
+TOP_P=0.9
+TOP_K=30
+REPETITION_PENALTY=1.1

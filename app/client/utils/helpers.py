@@ -1,63 +1,25 @@
 import os
-from typing import cast, List, Tuple
 import numpy as np
-from chromadb import Embeddings, Documents, EmbeddingFunction
 from docx import Document
 from fpdf import FPDF
 from pypdf import PdfReader
 from llama_index.core.schema import Document as LLamaDocument
-from constant import FINAL_PROMPT, MULTI_QUERY_PROMPT
-from style import text2html, chat_block
+from utils.constant import FINAL_PROMPT, MAX_LENGTH, MULTI_QUERY_PROMPT, REPETITION_PENALTY, TEMPERATURE, TOP_K, TOP_P
+from utils.style import text2html, chat_block
 
 
-class RagRanker:
-    def __init__(
-            self,
-            model_name: str = "ms-marco-MiniLM-L-12-v2",
-            device: str = "cpu",
-    ):
-        try:
-            from sentence_transformers import CrossEncoder
-        except ImportError:
-            raise ValueError(
-                "The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`"
-            )
-        self.model_name = f"cross-encoder/{model_name}"
-        self.__model = CrossEncoder(self.model_name, device=device)
-
-    def __call__(self, pairs: List[Tuple[str, str]]):
-        out = self.__model.predict(pairs)
-        return out
-
-
-class RagEmbedder(EmbeddingFunction[Documents]):
-    def __init__(
-            self,
-            model_name: str = "all-mpnet-base-v2",
-            device: str = "cpu",
-            normalize_embeddings: bool = False,
-    ):
-        try:
-            from sentence_transformers import SentenceTransformer
-        except ImportError:
-            raise ValueError(
-                "The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`"
-            )
-        self.__model = SentenceTransformer(model_name, device=device)
-        self.__norm_embd = normalize_embeddings
-
-    def __call__(self, input: Documents) -> Embeddings:
-        return cast(Embeddings, self.__model.encode(
-            list(input),
-            convert_to_numpy=True,
-            normalize_embeddings=self.__norm_embd,
-        ).tolist())
-
+# class Custom_PDF(FPDF):
+#     def __init__(self):
+#         super().__init__()
+#         self.add_font('Arial Unicode MS', '', "./font/arial-unicode-ms.ttf", uni=True)
+#         self.set_font('Arial Unicode MS', '', 12)
 
 class Custom_PDF(FPDF):
     def __init__(self):
         super().__init__()
-        self.add_font('Arial Unicode MS', '', "./font/arial-unicode-ms.ttf", uni=True)
+        dir_path = os.path.dirname(os.path.realpath(__file__)) 
+        font_path = os.path.join(dir_path, '..', 'font', 'arial-unicode-ms.ttf')
+        self.add_font('Arial Unicode MS', '', font_path, uni=True)
         self.set_font('Arial Unicode MS', '', 12)
 
 
@@ -127,12 +89,10 @@ def read_plain_text(file):
     texts = [file.read().decode("utf-8")]
     return texts
 
-
 def read_word_document(file):
     doc = Document(file)
     texts = [para.text for para in doc.paragraphs]
     return texts
-
 
 def documents_from_files(files, st=None):
     documents = []
@@ -206,11 +166,11 @@ def generate_related_queries(query, llm_client):
     response = llm_client.query({
             "inputs": prompt,
             "parameters": {
-                "temperature": 0.9,
-                "max_length": 2048,
-                "top_p": 0.9,
-                "top_k": 30,
-                "repetition_penalty": 1.1
+                "temperature": TEMPERATURE,
+                "max_length": MAX_LENGTH,
+                "top_p": TOP_P,
+                "top_k": TOP_K, 
+                "repetition_penalty": REPETITION_PENALTY, 
             }
         })
     
