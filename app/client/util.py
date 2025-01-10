@@ -6,6 +6,7 @@ from docx import Document
 from fpdf import FPDF
 from pypdf import PdfReader
 from llama_index.core.schema import Document as LLamaDocument
+from constant import MULTI_QUERY_PROMPT
 
 
 from style import text2html, chat_block
@@ -219,31 +220,42 @@ def init_session_state(st):
 
 
 def generate_related_queries(query, llm_client):
-    prompt = f"""
-    <s>You are a helpful research assistant in law and regulation. Users are asking questions about an article on AI.
-    Propose up to six additional related questions to help them find the information they need based on the provided question.
-    Only propose short questions without complex sentences. Offer a variety of questions covering different aspects of the topic.
-    Ensure they are complete questions and are related to the original question.</s>
-    [INST]User: {query}[/INST]
-    """
+    prompt = MULTI_QUERY_PROMPT.format(query=query)
     
     # Query the new LLM client
     response = llm_client.query({
-        "inputs": prompt,
-        "parameters": {
-            "temperature": 0.7,
-            "max_length": 512,
-            "top_p": 0.9,
-            "top_k": 40,
-            "repetition_penalty": 1.1
-        }
-    })
-
+            "inputs": prompt,
+            "parameters": {
+                "temperature": 0.9,
+                "max_length": 2048,
+                "top_p": 0.9,
+                "top_k": 30,
+                "repetition_penalty": 1.1
+            }
+        })
+    
     # [/INST] answers generated after the instraction
-    generated_text = response['generated_text']
+    generated_text = response[0]['generated_text']
     related_queries = generated_text.split('\n')  
 
     return related_queries
+
+
+# def retrieve_augmented_documents(query, aug_query, chroma_collection, n_results=10):
+#     queries = [query] + aug_query
+
+#     # retrieve docs for each query
+#     results = chroma_collection.query(query_texts=queries,
+#                                       n_results=n_results,
+#                                       include=['documents', 'embeddings', 'metadatas'])
+
+#     # we are using a set to avoid duplicated docs (we assume that queries could retrieve the same docs sometimes)
+#     un_ret_ids = set()
+#     for ids in results['ids']:
+#         for id in ids:
+#             un_ret_ids.add(id)
+
+#     return un_ret_ids
 
 
 def retrieve_augmented_documents(query, aug_query, chroma_collection, n_results=10):
@@ -253,6 +265,10 @@ def retrieve_augmented_documents(query, aug_query, chroma_collection, n_results=
     results = chroma_collection.query(query_texts=queries,
                                       n_results=n_results,
                                       include=['documents', 'embeddings', 'metadatas'])
+
+    # Check if results are empty and return an empty set if so
+    if not results['ids']:
+        return set()
 
     # we are using a set to avoid duplicated docs (we assume that queries could retrieve the same docs sometimes)
     un_ret_ids = set()
@@ -272,8 +288,7 @@ def re_ranking_retrieved_documents(query, cross_encoder, ret_ids, chroma_collect
     scores = cross_encoder(pairs)
 
     # sort pairs according to the scores and get indexes of 'n_filtered' first documents
-    assert n_filtered >= 1;
-    "make sure : n_filtered >= 1 !"
+    assert n_filtered >= 1 ; "make sure : n_filtered >= 1 !"
     idx = np.argsort(scores)[::-1][:n_filtered]
 
     # select our documents
