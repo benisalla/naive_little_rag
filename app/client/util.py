@@ -6,9 +6,7 @@ from docx import Document
 from fpdf import FPDF
 from pypdf import PdfReader
 from llama_index.core.schema import Document as LLamaDocument
-from constant import MULTI_QUERY_PROMPT
-
-
+from constant import FINAL_PROMPT, MULTI_QUERY_PROMPT
 from style import text2html, chat_block
 
 
@@ -196,30 +194,12 @@ def init_session_state(st):
 
     if "current_chroma_client" not in st.session_state:
         st.session_state.current_chroma_client = None
-
-
-# def generate_related_queries(query, llm_client, model="gpt-3.5-turbo"):
-#     messages = [
-#         {
-#             "role": "system",
-#             "content": "Vous êtes un assistant de recherche utile en droit et réglementation. Vos utilisateurs posent des questions sur un article sur l'IA. "
-#                        "Proposez jusqu'à six questions supplémentaires liées pour les aider à trouver les informations dont ils ont besoin, en fonction de la question fournie. "
-#                        "Proposez uniquement des questions courtes sans phrases complexes. Proposez une variété de questions couvrant différents aspects du sujet."
-#                        "Assurez-vous qu'elles sont des questions complètes et qu'elles sont liées à la question originale."
-#         },
-#         {"role": "user", "content": query}
-#     ]
-
-#     answer = llm_client.chat.completions.create(
-#         model=model,
-#         messages=messages,
-#     ).choices[0].message.content
-
-#     queries = answer.split("\n")
-#     return queries
-
+        
 
 def generate_related_queries(query, llm_client):
+    """
+    Generate related queries using the new LLM client. to increase the diversity of the retrieved documents.
+    """
     prompt = MULTI_QUERY_PROMPT.format(query=query)
     
     # Query the new LLM client
@@ -234,28 +214,19 @@ def generate_related_queries(query, llm_client):
             }
         })
     
-    # [/INST] answers generated after the instraction
+    # Extract the generated text from the response
     generated_text = response[0]['generated_text']
+    
+    # Split the generated text to get the part after the instruction
+    generated_text = generated_text.split("[/INST]")[-1]
+    
+    # Split the text into individual queries
     related_queries = generated_text.split('\n')  
+    
+    # Remove any empty strings from the list of queries
+    related_queries = [rq for rq in related_queries if rq]
 
     return related_queries
-
-
-# def retrieve_augmented_documents(query, aug_query, chroma_collection, n_results=10):
-#     queries = [query] + aug_query
-
-#     # retrieve docs for each query
-#     results = chroma_collection.query(query_texts=queries,
-#                                       n_results=n_results,
-#                                       include=['documents', 'embeddings', 'metadatas'])
-
-#     # we are using a set to avoid duplicated docs (we assume that queries could retrieve the same docs sometimes)
-#     un_ret_ids = set()
-#     for ids in results['ids']:
-#         for id in ids:
-#             un_ret_ids.add(id)
-
-#     return un_ret_ids
 
 
 def retrieve_augmented_documents(query, aug_query, chroma_collection, n_results=10):
@@ -309,21 +280,26 @@ def rag_system(st, query, cross_encoder, llm_client, chroma_collection, n_result
 
     # retrieve chunks from docs according to the query (similarity principal == cosine, ...)
     information, sources = re_ranking_retrieved_documents(query, cross_encoder, ret_ids, chroma_collection, n_filtered)
-
-    messages = [
-        {
-            "role": "system",
-            "content": """Vous êtes un assistant de recherche utile en droit et réglementation.
-                         Vos utilisateurs posent des questions sur des informations contenues dans des livres de droit."""
-                       "Vous verrez la question de l'utilisateur et les informations pertinentes des documents. Répondez à la question de l'utilisateur en n'utilisant que ces informations."
-        },
-        {"role": "user", "content": f"Question: {query}. \n Information: {information}"}
-    ]
-
-    answer = llm_client.chat.completions.create(
-        model=model,
-        messages=messages,
-    ).choices[0].message.content
+        
+    prompt = FINAL_PROMPT.format(query=query, information=information)
+    
+    # Query the new LLM client
+    answer = llm_client.query({
+            "inputs": prompt,
+            "parameters": {
+                "temperature": 0.9,
+                "max_length": 2048,
+                "top_p": 0.9,
+                "top_k": 30,
+                "repetition_penalty": 1.1
+            }
+        })
+    
+    # Extract the generated text from the response
+    answer = answer[0]['generated_text']
+    
+    # the answer is generated after [/INST] tag
+    answer = str(answer.split("[/INST]")[-1])
 
     return answer, sources, information
 
@@ -377,7 +353,7 @@ def display_chat_history(st, uploaded_files):
     with st.container():
         for q, a, sources, is_upload in st.session_state.chat_history:
             st.markdown(chat_block(st.session_state.user_name, q, is_question=True), unsafe_allow_html=True)
-            st.markdown(chat_block("JuridIA", a, is_question=False), unsafe_allow_html=True)
+            st.markdown(chat_block("BenIsAlla EduBot", a, is_question=False), unsafe_allow_html=True)
             files = set([(src["file_path"], src["file_name"]) for src in sources])
 
             with st.container():
@@ -410,7 +386,7 @@ def query_component(st, is_upload):
             label="",
             label_visibility="collapsed",
             key=f'query_{st.session_state.question_index}',
-            placeholder="Message JuridIA ...:")
+            placeholder="Message BenIsAlla EduBot ...:")
         submit_button = st.form_submit_button(label='Send')
 
         collection = st.session_state.current_chroma_collection if is_upload else st.session_state.chroma_collection
@@ -427,7 +403,7 @@ def query_component(st, is_upload):
                 st.session_state.chat_history.append((query, answer, sources, is_upload))
 
             st.session_state.question_index += 1
-            st.experimental_rerun()
+            st.rerun()
 
 
 def upload_handler(st, uploaded_files, current_collection_name):
