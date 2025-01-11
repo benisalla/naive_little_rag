@@ -97,10 +97,20 @@ if st.session_state.chat_history:
 if st.session_state.llm_client and (st.session_state.chroma_collection or st.session_state.current_chroma_collection):
     query_component(st, is_upload)
 
-##########################################################
+########################| Export Chat to PDF |#############################
 if st.button("Export Chat to PDF"):
     if st.session_state.chat_history:
-        export_chat_to_pdf(st.session_state.chat_history)
-        st.success("The chat has been exported to PDF. Check your downloads folder.")
+        pdf_data = export_chat_to_pdf(st.session_state.chat_history)
+
+        if pdf_data:
+            st.download_button(
+                label="Download PDF",
+                data=pdf_data,
+                file_name="chat_history.pdf",
+                mime="application/pdf",
+            )
+            st.success("The chat has been exported to PDF. Click the button to download.")
+        else:
+            st.error("Error generating PDF.")
     else:
-        st.info("You did not start you chat yet :)")
+        st.info("You did not start your chat yet :)")

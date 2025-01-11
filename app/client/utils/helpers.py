@@ -7,25 +7,78 @@ from llama_index.core.schema import Document as LLamaDocument
 from utils.constant import FINAL_PROMPT, MAX_LENGTH, MULTI_QUERY_PROMPT, REPETITION_PENALTY, TEMPERATURE, TOP_K, TOP_P
 from utils.style import text2html, chat_block
 
+
 class Custom_PDF(FPDF):
     def __init__(self):
         super().__init__()
-        dir_path = os.path.dirname(os.path.realpath(__file__)) 
+        dir_path = os.path.dirname(os.path.realpath(__file__))
         font_path = os.path.join(dir_path, '..', 'font', 'arial-unicode-ms.ttf')
         self.add_font('Arial Unicode MS', '', font_path, uni=True)
         self.set_font('Arial Unicode MS', '', 12)
+
+    def header(self):
+        self.set_font('Arial', 'B', 14)
+        self.cell(200, 10, 'Chat History Report', ln=True, align='C')
+        self.ln(10)  
+
+    def footer(self):
+        self.set_y(-15)  
+        self.set_font('Arial', 'I', 8)
+        self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
+
+# def export_chat_to_pdf(chat_history):
+#     pdf = Custom_PDF()
+#     pdf.add_page()
+
+#     pdf.set_font("Arial", 'B', 12)
+#     pdf.cell(200, 10, 'Chat History', ln=True)
+#     pdf.ln(5)  
+
+#     pdf.set_font("Arial", size=12)
+#     for question, answer, _, _ in chat_history:
+#         pdf.set_font("Arial", 'B', 12)
+#         pdf.cell(200, 10, txt=f"Question: ", ln=True)
+#         pdf.set_font("Arial", '', 12)
+#         pdf.multi_cell(0, 10, txt=question)
+        
+#         pdf.ln(5)
+
+#         pdf.set_font("Arial", 'B', 12)
+#         pdf.cell(200, 10, txt=f"Answer: ", ln=True)
+#         pdf.set_font("Arial", '', 12)
+#         pdf.multi_cell(0, 10, txt=answer)
+        
+#         pdf.ln(10)
+
+#     pdf.output("chat_history.pdf")
 
 
 def export_chat_to_pdf(chat_history):
     pdf = Custom_PDF()
     pdf.add_page()
+
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(200, 10, 'Chat History', ln=True)
+    pdf.ln(5)
+
     pdf.set_font("Arial", size=12)
-
     for question, answer, _, _ in chat_history:
-        pdf.cell(200, 10, txt=f"Question: {question}", ln=True)
-        pdf.cell(200, 10, txt=f"Answer: {answer}", ln=True)
+        pdf.set_font("Arial", 'B', 12)
+        pdf.cell(200, 10, txt=f"Question: ", ln=True)
+        pdf.set_font("Arial", '', 12)
+        pdf.multi_cell(0, 10, txt=question)
+        
+        pdf.ln(5)
 
-    pdf.output("chat_history.pdf")
+        pdf.set_font("Arial", 'B', 12)
+        pdf.cell(200, 10, txt=f"Answer: ", ln=True)
+        pdf.set_font("Arial", '', 12)
+        pdf.multi_cell(0, 10, txt=answer)
+        
+        pdf.ln(10)
+
+    pdf_output = pdf.output(dest='S').encode('latin1')
+    return pdf_output
 
 
 def get_file_by_name(files, name):
