@@ -17,64 +17,53 @@ class Custom_PDF(FPDF):
         self.set_font('Arial Unicode MS', '', 12)
 
     def header(self):
-        self.set_font('Arial', 'B', 14)
+        self.set_font('Arial Unicode MS', '', 14)
+        self.set_text_color(0, 102, 204)  
         self.cell(200, 10, 'Chat History Report', ln=True, align='C')
-        self.ln(10)  
+        self.ln(10)
 
     def footer(self):
-        self.set_y(-15)  
-        self.set_font('Arial', 'I', 8)
+        self.set_y(-15)
+        self.set_font('Arial Unicode MS', '', 8)
+        self.set_text_color(128, 128, 128) 
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
-
-# def export_chat_to_pdf(chat_history):
-#     pdf = Custom_PDF()
-#     pdf.add_page()
-
-#     pdf.set_font("Arial", 'B', 12)
-#     pdf.cell(200, 10, 'Chat History', ln=True)
-#     pdf.ln(5)  
-
-#     pdf.set_font("Arial", size=12)
-#     for question, answer, _, _ in chat_history:
-#         pdf.set_font("Arial", 'B', 12)
-#         pdf.cell(200, 10, txt=f"Question: ", ln=True)
-#         pdf.set_font("Arial", '', 12)
-#         pdf.multi_cell(0, 10, txt=question)
-        
-#         pdf.ln(5)
-
-#         pdf.set_font("Arial", 'B', 12)
-#         pdf.cell(200, 10, txt=f"Answer: ", ln=True)
-#         pdf.set_font("Arial", '', 12)
-#         pdf.multi_cell(0, 10, txt=answer)
-        
-#         pdf.ln(10)
-
-#     pdf.output("chat_history.pdf")
 
 
 def export_chat_to_pdf(chat_history):
     pdf = Custom_PDF()
     pdf.add_page()
 
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(200, 10, 'Chat History', ln=True)
+    pdf.set_font("Arial Unicode MS", '', 14)
+    pdf.set_text_color(0, 51, 102)  
+    pdf.cell(200, 10, 'Chat History', ln=True, align='C')
     pdf.ln(5)
 
-    pdf.set_font("Arial", size=12)
-    for question, answer, _, _ in chat_history:
-        pdf.set_font("Arial", 'B', 12)
-        pdf.cell(200, 10, txt=f"Question: ", ln=True)
-        pdf.set_font("Arial", '', 12)
-        pdf.multi_cell(0, 10, txt=question)
-        
+    pdf.set_font("Arial Unicode MS", size=12)
+    for question, answer, sources, _ in chat_history:
+        pdf.set_text_color(0, 102, 204)  
+        pdf.cell(200, 10, txt="Question:", ln=True, align='L')
+
+        pdf.set_text_color(0, 0, 0)  
+        pdf.multi_cell(0, 10, txt=question, border=1, align='L')
+
         pdf.ln(5)
 
-        pdf.set_font("Arial", 'B', 12)
-        pdf.cell(200, 10, txt=f"Answer: ", ln=True)
-        pdf.set_font("Arial", '', 12)
-        pdf.multi_cell(0, 10, txt=answer)
-        
+        pdf.set_text_color(0, 102, 51)  
+        pdf.cell(200, 10, txt="Answer:", ln=True, align='L')
+
+        pdf.set_text_color(0, 0, 0)
+        pdf.multi_cell(0, 10, txt=answer, border=1, align='L')
+
+        pdf.ln(5)
+
+        pdf.set_text_color(204, 0, 0)  
+        pdf.cell(200, 10, txt="Sources:", ln=True, align='L')
+
+        pdf.set_text_color(0, 0, 0)  
+        for source in sources:
+            source_text = f"File: {source['file_name']} (Page: {source['page_label']})"
+            pdf.multi_cell(0, 8, txt=source_text, border=0, align='L')
+
         pdf.ln(10)
 
     pdf_output = pdf.output(dest='S').encode('latin1')
@@ -236,6 +225,9 @@ def generate_related_queries(query, llm_client):
 
 
 def retrieve_augmented_documents(query, aug_query, chroma_collection, n_results=10):
+    """
+    Retrieve a set of unique document IDs based on the main query and augmented queries.
+    """
     queries = [query] + aug_query
 
     # retrieve docs for each query
@@ -257,6 +249,9 @@ def retrieve_augmented_documents(query, aug_query, chroma_collection, n_results=
 
 
 def re_ranking_retrieved_documents(query, cross_encoder, ret_ids, chroma_collection, n_filtered=3):
+    """
+    Re-ranks retrieved documents based on a query using a cross-encoder and returns the top n_filtered documents and their sources.
+    """
     # retrieve all docs according to our augmented query
     results = chroma_collection.get(list(ret_ids))
 
@@ -286,18 +281,19 @@ def rag_system(st, query, cross_encoder, llm_client, chroma_collection, n_result
 
     # retrieve chunks from docs according to the query (similarity principal == cosine, ...)
     information, sources = re_ranking_retrieved_documents(query, cross_encoder, ret_ids, chroma_collection, n_filtered)
-        
+    
+    # construct the final prompt
     prompt = FINAL_PROMPT.format(query=query, information=information)
     
     # Query the new LLM client
     answer = llm_client.query({
             "inputs": prompt,
             "parameters": {
-                "temperature": 0.9,
-                "max_length": 2048,
-                "top_p": 0.9,
-                "top_k": 30,
-                "repetition_penalty": 1.1
+                "temperature": TEMPERATURE,
+                "max_length": MAX_LENGTH,
+                "top_p": TOP_P,
+                "top_k": TOP_K, 
+                "repetition_penalty": REPETITION_PENALTY, 
             }
         })
     
@@ -311,10 +307,16 @@ def rag_system(st, query, cross_encoder, llm_client, chroma_collection, n_result
 
 
 def embedding_uploaded_files(uploaded_files, st):
+    """
+    Embeds the uploaded files and adds them to the current collection.
+    """
+    # get the current collection
     collection = st.session_state.current_chroma_collection
 
+    # get the documents from the uploaded files
     documents = documents_from_files(uploaded_files, st)
 
+    # get the nodes from the documents
     nodes = st.session_state.token_splitter.get_nodes_from_documents(documents)
 
     prev_id = 0
@@ -344,6 +346,9 @@ def embedding_uploaded_files(uploaded_files, st):
 
 
 def re_create_collection(st, uploaded_files, cc_name):
+    """
+    Re-creates the collection with the new uploaded files.
+    """
     if uploaded_files:
         try:
             st.session_state.current_chroma_client.delete_collection(name=cc_name)
@@ -356,6 +361,9 @@ def re_create_collection(st, uploaded_files, cc_name):
 
 
 def display_chat_history(st, uploaded_files):
+    """
+    Display the chat history in the chat window.
+    """
     with st.container():
         for q, a, sources, is_upload in st.session_state.chat_history:
             st.markdown(chat_block(st.session_state.user_name, q, is_question=True), unsafe_allow_html=True)
@@ -387,6 +395,9 @@ def display_chat_history(st, uploaded_files):
 
 
 def query_component(st, is_upload):
+    """
+    The query component that allows the user to interact with the chatbot.
+    """
     with st.form(key=f'query_form_{st.session_state.question_index}'):
         query = st.text_input(
             label="",
@@ -399,13 +410,13 @@ def query_component(st, is_upload):
 
         if submit_button and query:
             with st.spinner(text='Processing ...'):
-                answer, sources, information = rag_system(st,
-                                                          query=query,
-                                                          cross_encoder=st.session_state.cross_encoder,
-                                                          llm_client=st.session_state.llm_client,
-                                                          chroma_collection=collection,
-                                                          n_results=4,
-                                                          n_filtered=2)
+                answer, sources, _ = rag_system(st,
+                                                query=query,
+                                                cross_encoder=st.session_state.cross_encoder,
+                                                llm_client=st.session_state.llm_client,
+                                                chroma_collection=collection,
+                                                n_results=4,
+                                                n_filtered=2)
                 st.session_state.chat_history.append((query, answer, sources, is_upload))
 
             st.session_state.question_index += 1
@@ -413,6 +424,9 @@ def query_component(st, is_upload):
 
 
 def upload_handler(st, uploaded_files, current_collection_name):
+    """
+    Handles the uploaded files by embedding them and adding them to the current collection.
+    """
     if st.session_state.is_new_upload:
         with st.spinner(text='Processing Your Files ...'):
             re_create_collection(st, uploaded_files, current_collection_name)

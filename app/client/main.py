@@ -22,8 +22,6 @@ cross_encoder_name = os.environ["CROSS_ENCODER_NAME"]
 port = os.environ["PORT"]
 host = os.environ["HOST"]
 
-print(emb_model_name)
-print(cross_encoder_name)
 
 # init the session state
 init_session_state(st)
@@ -108,6 +106,7 @@ if st.button("Export Chat to PDF"):
                 data=pdf_data,
                 file_name="chat_history.pdf",
                 mime="application/pdf",
+                use_container_width=True
             )
             st.success("The chat has been exported to PDF. Click the button to download.")
         else:

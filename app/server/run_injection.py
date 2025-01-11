@@ -1,7 +1,9 @@
 import os
+from tkinter import SEPARATOR
 import chromadb
 import tiktoken
 from dotenv import load_dotenv
+from app.client.utils.constant import BACKUP_SEPARATORS, CHUNK_OVERLAP, CHUNK_SIZE
 from util import textDB2EmbDB, RagEmbedder
 from transformers import AutoTokenizer
 from llama_index.core.node_parser.text.token import TokenTextSplitter
@@ -23,21 +25,10 @@ print("Environment variables loaded.")
 
 # sentence transformers token text splitter
 token_splitter = TokenTextSplitter(
-    separator=". ",
-    chunk_size=200,
-    chunk_overlap=20,
-    backup_separators=[
-        "\n\n\n",
-        "\n\n",
-        "\r\n",
-        "\r",
-        "\t",
-        "! ",
-        "? ",
-        ": ",
-        "; ",
-        ", ",
-    ],
+    separator=SEPARATOR,
+    chunk_size=CHUNK_SIZE,
+    chunk_overlap=CHUNK_OVERLAP,
+    backup_separators=BACKUP_SEPARATORS,
     tokenizer=tiktoken.encoding_for_model("gpt-3.5-turbo").encode
     # tokenizer = AutoTokenizer.from_pretrained(tok_model_name, use_auth_token=hf_token).encode
     # tokenizer = AutoTokenizer.from_pretrained(tok_model_name, token=hf_token).encode
