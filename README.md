@@ -1,6 +1,6 @@
 # Value Little Rag Demo Repository
 
-Part of my projects to demonstrate my capability to implement a simple rag from scratch with Chroma and open-source models.
+This project demonstrates my capability to implement a simple RAG (Retrieval-Augmented Generation) system from scratch using Chroma and open-source models.
 
 ## Setup and Installation
 
@@ -9,7 +9,7 @@ Part of my projects to demonstrate my capability to implement a simple rag from 
 git clone https://github.com/yourusername/juridai-demo.git
 cd valeo_little_rag
 
-# Create and activate Python environment
+# Create and activate a Python environment
 python3.11 -m venv venv
 source venv/Scripts/activate
 
@@ -17,21 +17,28 @@ source venv/Scripts/activate
 pip install -r requirements.txt
 ```
 
-## Running the Server (rag injection)
+## Configuration
+
+- Rename the file `.env.example` to `.env`.
+- Add your Hugging Face token in the `.env` file.
+
+## Running the Server (RAG Injection)
+
+To set up the server and inject data for retrieval:
 
 ```bash
 # Launch ChromaDB Server (in terminal 1)
-python app/server/chroma.py
+python app/server/run_chromadb.py
 
-# Run injection to embed and store data (in terminal 2)
-python app/server/injection.py
+# Embed and store data via injection (in terminal 2)
+python app/server/run_injection.py
 ```
 
-## Running the Client (rag Retrieval)
+## Running the Client (RAG Retrieval)
 
-Run just retriever
+To test the retrieval functionality:
 
 ```bash
-# Run rag system (in terminal 3)
-python app/client/retriever.py
+# Run the RAG retrieval system (in terminal 3)
+python app/client/run.py
 ```
