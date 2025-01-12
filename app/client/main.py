@@ -40,9 +40,6 @@ if not st.session_state.emb_fun:
 if not st.session_state.chroma_client:
     st.session_state.chroma_client = chromadb.HttpClient(host=host, port=port)
 
-if not st.session_state.current_chroma_client:
-    st.session_state.current_chroma_client = chromadb.Client()
-
 if not st.session_state.chroma_collection:
     st.session_state.chroma_collection = st.session_state.chroma_client.get_or_create_collection(name=collection_name,
                                                                                                  embedding_function=st.session_state.emb_fun)
@@ -68,10 +65,8 @@ st.markdown(header_content(), unsafe_allow_html=True)
 ########################| Side Bar |#############################
 st.sidebar.title('BenIsAlla EduBot')
 st.sidebar.markdown("***")
-st.sidebar.markdown('My AI assistant')
-st.sidebar.markdown("***")
 with st.container(border=True):
-    is_upload = st.sidebar.toggle('Upload Files?')
+    is_upload = st.sidebar.toggle('Use Uploaded Files ?')
 st.sidebar.markdown("***")
 file_types = ["pdf", "txt", "docx"]
 uploaded_files = st.sidebar.file_uploader("Drop your files here",

@@ -185,11 +185,7 @@ def init_session_state(st):
         st.session_state.current_chroma_collection = None
 
     if "chroma_client" not in st.session_state:
-        st.session_state.chroma_client = None
-
-    if "current_chroma_client" not in st.session_state:
-        st.session_state.current_chroma_client = None
-        
+        st.session_state.chroma_client = None        
 
 def generate_related_queries(query, llm_client):
     """
@@ -351,14 +347,15 @@ def re_create_collection(st, uploaded_files, cc_name):
     """
     if uploaded_files:
         try:
-            st.session_state.current_chroma_client.delete_collection(name=cc_name)
+            st.session_state.chroma_client.delete_collection(name=cc_name)
         except:
             pass
-        st.session_state.current_chroma_collection = st.session_state.current_chroma_client.create_collection(
+        
+        st.session_state.current_chroma_collection = st.session_state.chroma_client.create_collection(
             name=cc_name,
             embedding_function=st.session_state.emb_fun)
         st.session_state.current_chroma_collection = embedding_uploaded_files(uploaded_files, st)
-
+        
 
 def display_chat_history(st, uploaded_files):
     """
